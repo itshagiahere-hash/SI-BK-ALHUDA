@@ -670,7 +670,7 @@ function historyTable(title, headers, rows) {
 function letterHead(title) {
   return `
     <header class="official-header">
-      <img class="print-logo" src="assets/SMAIT-transparent.png" alt="Logo SMA IT Al Huda Wonogiri">
+      <img class="print-logo" src="/SMAIT-transparent.png" alt="Logo SMA IT Al Huda Wonogiri">
       <div class="header-school">
         <div>YAYASAN AL HUDA WONOGIRI</div>
         <h3>SMA IT AL HUDA WONOGIRI</h3>
