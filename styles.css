@@ -207,14 +207,6 @@ body {
   --bs-btn-hover-color: #1f2421;
 }
 
-.demo-access {
-  display: grid;
-  gap: 6px;
-  margin-top: 18px;
-  color: #d0d6d2;
-  font-size: .88rem;
-}
-
 .btn {
   border-radius: 7px;
   font-weight: 700;
@@ -748,6 +740,10 @@ body {
   border-bottom: 1px solid #000;
 }
 
+#printMount {
+  display: none;
+}
+
 @media (max-width: 1000px) {
   .login-card {
     grid-template-columns: 1fr;
@@ -839,6 +835,7 @@ body {
   }
 
   #printMount {
+    display: block;
     position: absolute;
     inset: 0;
     padding: 0;
