@@ -172,7 +172,7 @@ function syncCurrentSessionWithUsers() {
   };
   sessionStorage.setItem(sessionKey, JSON.stringify(currentUser));
   if (!byId("appShell").classList.contains("d-none")) {
-    byId("activeUserLabel").textContent = `${currentUser.name} (${currentUser.role === "admin" ? "Admin" : "Guest"})${usingSupabase ? " - Supabase" : " - Lokal"}`;
+    updateGreeting();
     document.querySelectorAll(".admin-only").forEach((node) => node.classList.toggle("d-none", currentUser.role !== "admin"));
     renderNav();
   }
@@ -357,11 +357,19 @@ function logout() {
 function showApp() {
   byId("loginScreen").classList.add("d-none");
   byId("appShell").classList.remove("d-none");
-  byId("activeUserLabel").textContent = `${currentUser.name} (${currentUser.role === "admin" ? "Admin" : "Guest"})${usingSupabase ? " - Supabase" : " - Lokal"}`;
+  updateGreeting();
   document.querySelectorAll(".admin-only").forEach((node) => node.classList.toggle("d-none", currentUser.role !== "admin"));
   renderNav();
   switchView("dashboard");
   renderAll();
+}
+
+function updateGreeting() {
+  const roleLabel = currentUser.role === "admin" ? "Admin" : "Guest";
+  byId("greetingName").textContent = currentUser.name;
+  byId("greetingBadge").textContent = roleLabel;
+  byId("greetingBadge").className = `role-badge ${currentUser.role === "viewer" ? "viewer" : ""}`.trim();
+  byId("activeUserLabel").textContent = `${currentUser.name} (${roleLabel})${usingSupabase ? " - Supabase" : " - Lokal"}`;
 }
 
 function renderNav() {

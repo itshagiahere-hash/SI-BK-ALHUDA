@@ -303,9 +303,44 @@ body {
   margin-bottom: 24px;
 }
 
+.topbar-left {
+  display: grid;
+  gap: 4px;
+}
+
 .topbar h2 {
   margin: 0;
   font-size: 1.6rem;
+}
+
+.greeting-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.greeting-line strong {
+  color: var(--primary);
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #fff;
+  background: #dc3545;
+  font-size: .78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.role-badge.viewer {
+  background: var(--primary);
 }
 
 .user-chip {
@@ -816,6 +851,10 @@ body {
     align-items: stretch;
     flex-direction: column;
     grid-template-columns: 1fr;
+  }
+
+  .greeting-line {
+    flex-wrap: wrap;
   }
 }
 
