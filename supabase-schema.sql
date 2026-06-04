@@ -95,3 +95,27 @@ create policy "SI-BK prototype access" on public.sibk_students for all to anon u
 create policy "SI-BK prototype access" on public.sibk_violations for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_achievements for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_counseling for all to anon using (true) with check (true);
+
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.sibk_users;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sibk_students;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sibk_violations;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sibk_achievements;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sibk_counseling;
+  exception when duplicate_object then null;
+  end;
+end $$;

@@ -29,6 +29,11 @@ let currentView = "dashboard";
 let selectedHistoryStudentId = null;
 let supabaseClient = null;
 let usingSupabase = false;
+let supabaseRealtimeChannel = null;
+let supabaseRefreshInFlight = false;
+let supabaseRefreshQueued = false;
+let supabasePollTimer = null;
+let lastSyncSignature = "";
 
 const supabaseTables = {
   users: {
@@ -94,17 +99,110 @@ async function setupSupabase() {
   supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   await loadSupabaseData();
   usingSupabase = true;
+  await subscribeSupabaseRealtime();
 }
 
 async function loadSupabaseData() {
+  db = await fetchSupabaseSnapshot();
+  saveData();
+  lastSyncSignature = snapshotSignature(db);
+}
+
+async function fetchSupabaseSnapshot() {
   const nextDb = {};
   for (const [collection, meta] of Object.entries(supabaseTables)) {
     const { data, error } = await supabaseClient.from(meta.table).select("*").order(meta.order, { ascending: true });
     if (error) throw error;
     nextDb[collection] = data.map(meta.fromDb);
   }
-  db = nextDb;
-  saveData();
+  return nextDb;
+}
+
+function snapshotSignature(sourceDb) {
+  return JSON.stringify({
+    users: sourceDb.users.map((item) => item.id),
+    students: sourceDb.students.map((item) => item.id),
+    violations: sourceDb.violations.map((item) => item.id),
+    achievements: sourceDb.achievements.map((item) => item.id),
+    counseling: sourceDb.counseling.map((item) => item.id)
+  });
+}
+
+async function refreshFromSupabase() {
+  if (!usingSupabase || !supabaseClient) return;
+  if (supabaseRefreshInFlight) {
+    supabaseRefreshQueued = true;
+    return;
+  }
+
+  supabaseRefreshInFlight = true;
+  try {
+    const nextDb = await fetchSupabaseSnapshot();
+    const nextSignature = snapshotSignature(nextDb);
+    if (nextSignature === lastSyncSignature) return;
+    db = nextDb;
+    saveData();
+    lastSyncSignature = nextSignature;
+    syncCurrentSessionWithUsers();
+    renderAll();
+  } catch (error) {
+    console.warn("Supabase refresh failed:", error);
+  } finally {
+    supabaseRefreshInFlight = false;
+    if (supabaseRefreshQueued) {
+      supabaseRefreshQueued = false;
+      await refreshFromSupabase();
+    }
+  }
+}
+
+function syncCurrentSessionWithUsers() {
+  if (!currentUser) return;
+  const freshUser = db.users.find((user) => user.id === currentUser.id);
+  if (!freshUser) {
+    logout();
+    return;
+  }
+
+  currentUser = {
+    id: freshUser.id,
+    username: freshUser.username,
+    name: freshUser.name,
+    role: freshUser.role
+  };
+  sessionStorage.setItem(sessionKey, JSON.stringify(currentUser));
+  if (!byId("appShell").classList.contains("d-none")) {
+    byId("activeUserLabel").textContent = `${currentUser.name} (${currentUser.role === "admin" ? "Admin" : "Guest"})${usingSupabase ? " - Supabase" : " - Lokal"}`;
+    document.querySelectorAll(".admin-only").forEach((node) => node.classList.toggle("d-none", currentUser.role !== "admin"));
+    renderNav();
+  }
+}
+
+async function subscribeSupabaseRealtime() {
+  if (!supabaseClient?.channel) return;
+
+  if (supabaseRealtimeChannel) {
+    await supabaseClient.removeChannel(supabaseRealtimeChannel);
+  }
+
+  supabaseRealtimeChannel = supabaseClient
+    .channel("sibk-live-sync")
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_users" }, () => refreshFromSupabase())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_students" }, () => refreshFromSupabase())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_violations" }, () => refreshFromSupabase())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_achievements" }, () => refreshFromSupabase())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_counseling" }, () => refreshFromSupabase());
+
+  await supabaseRealtimeChannel.subscribe((status) => {
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn("Supabase realtime channel status:", status);
+    }
+  });
+
+  if (supabasePollTimer) clearInterval(supabasePollTimer);
+  supabasePollTimer = setInterval(() => {
+    refreshFromSupabase();
+  }, 8000);
 }
 
 async function saveRemote(collection, payload) {
@@ -670,7 +768,7 @@ function historyTable(title, headers, rows) {
 function letterHead(title) {
   return `
     <header class="official-header">
-      <img class="print-logo" src="/SMAIT-transparent.png" alt="Logo SMA IT Al Huda Wonogiri">
+      <img class="print-logo" src="assets/SMAIT-transparent.png" alt="Logo SMA IT Al Huda Wonogiri">
       <div class="header-school">
         <div>YAYASAN AL HUDA WONOGIRI</div>
         <h3>SMA IT AL HUDA WONOGIRI</h3>
@@ -834,6 +932,11 @@ function printHtml(html) {
     document.body.appendChild(mount);
   }
   mount.innerHTML = html;
+  const cleanup = () => {
+    mount.innerHTML = "";
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
   setTimeout(() => window.print(), 120);
 }
 
