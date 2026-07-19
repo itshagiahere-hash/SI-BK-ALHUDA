@@ -226,6 +226,34 @@
           </div>
         </section>
 
+        <section id="view-journals" class="view admin-only">
+          <div class="panel">
+            <div class="panel-heading wrap">
+              <div>
+                <h3>Jurnal BK</h3>
+                <p>Catatan jurnal yang di-entry user untuk dokumentasi layanan BK.</p>
+              </div>
+              <button class="btn btn-primary" data-open-modal="journalModal"><i class="fa-solid fa-plus"></i> Tambah Jurnal</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Nama Siswa / Kelas</th>
+                    <th>Jenis Layanan</th>
+                    <th>Materi / Permasalahan</th>
+                    <th>Hasil Layanan</th>
+                    <th>Follow Up</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="journalTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <section id="view-reports" class="view admin-only">
           <div class="panel">
             <div class="panel-heading">
@@ -354,6 +382,30 @@
             <label class="form-label mt-3">Ringkasan</label><textarea id="counselingSummary" class="form-control" rows="3" required></textarea>
             <label class="form-label mt-3">Tindak Lanjut</label><textarea id="counselingFollowUp" class="form-control" rows="2"></textarea>
             <label class="form-label mt-3">Status</label><select id="counselingStatus" class="form-select"><option>Dalam Proses</option><option>Selesai</option><option>Perlu Pemantauan</option></select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+            <button class="btn btn-primary" type="submit">Simpan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal fade" id="journalModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form class="modal-content" id="journalForm">
+          <div class="modal-header">
+            <h5 class="modal-title">Jurnal BK</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <div class="modal-body form-grid">
+            <input type="hidden" id="journalId">
+            <div><label class="form-label">Tanggal</label><input id="journalDate" class="form-control" type="date" required></div>
+            <div><label class="form-label">Nama Siswa / Kelas</label><input id="journalStudentClass" class="form-control" placeholder="Nama siswa / kelas" required></div>
+            <div><label class="form-label">Jenis Layanan</label><input id="journalServiceType" class="form-control" placeholder="Jenis layanan" required></div>
+            <div><label class="form-label">Materi / Permasalahan</label><textarea id="journalIssue" class="form-control" rows="3" required></textarea></div>
+            <div><label class="form-label">Hasil Layanan</label><textarea id="journalResult" class="form-control" rows="3" required></textarea></div>
+            <div><label class="form-label">Follow Up</label><textarea id="journalFollowUp" class="form-control" rows="3"></textarea></div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>

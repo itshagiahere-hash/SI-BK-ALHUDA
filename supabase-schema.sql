@@ -49,6 +49,17 @@ create table if not exists public.sibk_counseling (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.sibk_journals (
+  id text primary key,
+  date date not null,
+  student_class text not null,
+  service_type text not null,
+  issue text not null,
+  result text not null,
+  follow_up text,
+  created_at timestamptz not null default now()
+);
+
 insert into public.sibk_users (id, username, password, full_name, role, master)
 values
   ('u-master', 'admin', 'admin123', 'Guru BK Utama', 'admin', true),
@@ -83,18 +94,21 @@ alter table public.sibk_students enable row level security;
 alter table public.sibk_violations enable row level security;
 alter table public.sibk_achievements enable row level security;
 alter table public.sibk_counseling enable row level security;
+alter table public.sibk_journals enable row level security;
 
 drop policy if exists "SI-BK prototype access" on public.sibk_users;
 drop policy if exists "SI-BK prototype access" on public.sibk_students;
 drop policy if exists "SI-BK prototype access" on public.sibk_violations;
 drop policy if exists "SI-BK prototype access" on public.sibk_achievements;
 drop policy if exists "SI-BK prototype access" on public.sibk_counseling;
+drop policy if exists "SI-BK prototype access" on public.sibk_journals;
 
 create policy "SI-BK prototype access" on public.sibk_users for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_students for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_violations for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_achievements for all to anon using (true) with check (true);
 create policy "SI-BK prototype access" on public.sibk_counseling for all to anon using (true) with check (true);
+create policy "SI-BK prototype access" on public.sibk_journals for all to anon using (true) with check (true);
 
 do $$
 begin
@@ -116,6 +130,10 @@ begin
   end;
   begin
     alter publication supabase_realtime add table public.sibk_counseling;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table public.sibk_journals;
   exception when duplicate_object then null;
   end;
 end $$;

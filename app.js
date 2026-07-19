@@ -20,7 +20,8 @@ const seedData = {
   ],
   counseling: [
     { id: "c-1", studentId: "s-1", date: "2026-05-16", type: "Konsultasi Pribadi", summary: "Diskusi pengelolaan waktu belajar.", followUp: "Pemantauan selama dua pekan.", status: "Dalam Proses" }
-  ]
+  ],
+  journals: []
 };
 
 let db = loadData();
@@ -65,6 +66,12 @@ const supabaseTables = {
     order: "date",
     toDb: (item) => ({ id: item.id, student_id: item.studentId, date: item.date, type: item.type, summary: item.summary, follow_up: item.followUp, status: item.status }),
     fromDb: (row) => ({ id: row.id, studentId: row.student_id, date: row.date, type: row.type, summary: row.summary, followUp: row.follow_up, status: row.status })
+  },
+  journals: {
+    table: "sibk_journals",
+    order: "date",
+    toDb: (item) => ({ id: item.id, date: item.date, student_class: item.studentClass, service_type: item.serviceType, issue: item.issue, result: item.result, follow_up: item.followUp }),
+    fromDb: (row) => ({ id: row.id, date: row.date, studentClass: row.student_class, serviceType: row.service_type, issue: row.issue, result: row.result, followUp: row.follow_up })
   }
 };
 
@@ -74,6 +81,7 @@ const views = [
   { id: "violations", label: "Pelanggaran", icon: "fa-clipboard-list", roles: ["admin"] },
   { id: "achievements", label: "Prestasi", icon: "fa-award", roles: ["admin"] },
   { id: "counseling", label: "Catatan Konseling", icon: "fa-user-pen", roles: ["admin"] },
+  { id: "journals", label: "Jurnal", icon: "fa-book-open", roles: ["admin"] },
   { id: "reports", label: "Rekapitulasi", icon: "fa-chart-pie", roles: ["admin"] },
   { id: "users", label: "User Management", icon: "fa-users-gear", roles: ["admin"] }
 ];
@@ -84,7 +92,14 @@ function loadData() {
     localStorage.setItem(storageKey, JSON.stringify(seedData));
     return structuredClone(seedData);
   }
-  return JSON.parse(saved);
+
+  const parsed = JSON.parse(saved);
+  const normalized = structuredClone(seedData);
+  for (const key of Object.keys(normalized)) {
+    if (Array.isArray(parsed?.[key])) normalized[key] = parsed[key];
+  }
+  localStorage.setItem(storageKey, JSON.stringify(normalized));
+  return normalized;
 }
 
 function saveData() {
@@ -124,7 +139,8 @@ function snapshotSignature(sourceDb) {
     students: sourceDb.students.map((item) => item.id),
     violations: sourceDb.violations.map((item) => item.id),
     achievements: sourceDb.achievements.map((item) => item.id),
-    counseling: sourceDb.counseling.map((item) => item.id)
+    counseling: sourceDb.counseling.map((item) => item.id),
+    journals: sourceDb.journals.map((item) => item.id)
   });
 }
 
@@ -191,7 +207,8 @@ async function subscribeSupabaseRealtime() {
     .on("postgres_changes", { event: "*", schema: "public", table: "sibk_students" }, () => refreshFromSupabase())
     .on("postgres_changes", { event: "*", schema: "public", table: "sibk_violations" }, () => refreshFromSupabase())
     .on("postgres_changes", { event: "*", schema: "public", table: "sibk_achievements" }, () => refreshFromSupabase())
-    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_counseling" }, () => refreshFromSupabase());
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_counseling" }, () => refreshFromSupabase())
+    .on("postgres_changes", { event: "*", schema: "public", table: "sibk_journals" }, () => refreshFromSupabase());
 
   await supabaseRealtimeChannel.subscribe((status) => {
     if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
@@ -317,6 +334,7 @@ function bindEvents() {
   byId("violationForm").addEventListener("submit", saveViolation);
   byId("achievementForm").addEventListener("submit", saveAchievement);
   byId("counselingForm").addEventListener("submit", saveCounseling);
+  byId("journalForm").addEventListener("submit", saveJournal);
   byId("userForm").addEventListener("submit", saveUser);
   byId("csvImportInput").addEventListener("change", importCsv);
   byId("downloadTemplateBtn").addEventListener("click", downloadTemplate);
@@ -395,6 +413,7 @@ function renderAll() {
   renderViolations();
   renderAchievements();
   renderCounseling();
+  renderJournals();
   renderUsers();
   fillStudentSelects();
 }
@@ -499,6 +518,23 @@ function renderCounseling() {
   `).join("") || `<tr><td colspan="7">${emptyState("Belum ada catatan konseling.")}</td></tr>`;
 }
 
+function renderJournals() {
+  byId("journalTable").innerHTML = db.journals.map((item) => `
+    <tr>
+      <td>${formatDate(item.date)}</td>
+      <td>${item.studentClass}</td>
+      <td>${item.serviceType}</td>
+      <td>${item.issue}</td>
+      <td>${item.result}</td>
+      <td>${item.followUp || "-"}</td>
+      <td><div class="action-row">
+        <button class="icon-btn" title="Edit" onclick="editJournal('${item.id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn" title="Hapus" onclick="deleteRecord('journals','${item.id}')"><i class="fa-solid fa-trash"></i></button>
+      </div></td>
+    </tr>
+  `).join("") || `<tr><td colspan="7">${emptyState("Belum ada jurnal.")}</td></tr>`;
+}
+
 function renderUsers() {
   byId("userTable").innerHTML = db.users.map((user) => `
     <tr>
@@ -530,6 +566,7 @@ function openCreateModal(modalId) {
     violationModal: "violationForm",
     achievementModal: "achievementForm",
     counselingModal: "counselingForm",
+    journalModal: "journalForm",
     userModal: "userForm"
   };
   byId(formMap[modalId]).reset();
@@ -601,6 +638,21 @@ async function saveCounseling(event) {
     status: byId("counselingStatus").value
   });
   closeModal("counselingModal");
+}
+
+async function saveJournal(event) {
+  event.preventDefault();
+  const id = byId("journalId").value || uid("j");
+  await upsert("journals", {
+    id,
+    date: byId("journalDate").value,
+    studentClass: byId("journalStudentClass").value.trim(),
+    serviceType: byId("journalServiceType").value.trim(),
+    issue: byId("journalIssue").value.trim(),
+    result: byId("journalResult").value.trim(),
+    followUp: byId("journalFollowUp").value.trim()
+  });
+  closeModal("journalModal");
 }
 
 async function saveUser(event) {
@@ -680,6 +732,18 @@ function editCounseling(id) {
   byId("counselingFollowUp").value = item.followUp;
   byId("counselingStatus").value = item.status;
   bootstrap.Modal.getOrCreateInstance(byId("counselingModal")).show();
+}
+
+function editJournal(id) {
+  const item = db.journals.find((record) => record.id === id);
+  byId("journalId").value = item.id;
+  byId("journalDate").value = item.date;
+  byId("journalStudentClass").value = item.studentClass;
+  byId("journalServiceType").value = item.serviceType;
+  byId("journalIssue").value = item.issue;
+  byId("journalResult").value = item.result;
+  byId("journalFollowUp").value = item.followUp;
+  bootstrap.Modal.getOrCreateInstance(byId("journalModal")).show();
 }
 
 function editUser(id) {
@@ -1076,6 +1140,7 @@ window.editStudent = editStudent;
 window.editViolation = editViolation;
 window.editAchievement = editAchievement;
 window.editCounseling = editCounseling;
+window.editJournal = editJournal;
 window.editUser = editUser;
 window.deleteRecord = deleteRecord;
 window.deleteUser = deleteUser;
@@ -1084,3 +1149,5 @@ window.printWarning = printWarning;
 window.printCounseling = printCounseling;
 
 init();
+
+
